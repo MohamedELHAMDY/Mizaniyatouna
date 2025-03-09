@@ -1,12 +1,47 @@
-import React, { useState } from 'react';
-import { BarChart3, Users, BookOpen, MessageSquare, TrendingUp, BrainCircuit, Globe2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BarChart3, Users, BookOpen, MessageSquare, TrendingUp, BrainCircuit, Globe2, UserCircle } from 'lucide-react';
 import DashboardChart from './components/DashboardChart';
 import NewsSection from './components/NewsSection';
 import ParticipationSection from './components/ParticipationSection';
 import ChatbotSection from './components/ChatbotSection';
+import { AuthModal } from './components/AuthModal';
+import { useAuthStore } from './stores/authStore';
+import { supabase } from './lib/supabase';
+
+type FeatureCardProps = {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+};
+
+const FeatureCard = ({ icon, title, description }: FeatureCardProps) => {
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+      <div className="mb-4">{icon}</div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  );
+};
 
 function App() {
   const [language, setLanguage] = useState('fr');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user, setUser, signOut } = useAuthStore();
+
+  useEffect(() => {
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for changes on auth state (sign in, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -16,7 +51,7 @@ function App() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img 
-                src="https://images.unsplash.com/photo-1556710986-4a70434a76c0?auto=format&fit=crop&w=48&h=32" 
+                src="https://images.unsplash.com/photo-1558246385-c14b48911485?auto=format&fit=crop&w=48&h=32" 
                 alt="Drapeau du Maroc" 
                 className="h-8 w-auto"
               />
@@ -29,25 +64,58 @@ function App() {
                 <a href="#education" className="hover:text-emerald-200">Apprentissage</a>
                 <a href="#analysis" className="hover:text-emerald-200">Analyses</a>
               </nav>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => setLanguage('fr')}
-                  className={`px-2 py-1 rounded ${language === 'fr' ? 'bg-white/20' : ''}`}
-                >
-                  FR
-                </button>
-                <button 
-                  onClick={() => setLanguage('ar')}
-                  className={`px-2 py-1 rounded ${language === 'ar' ? 'bg-white/20' : ''}`}
-                >
-                  عربية
-                </button>
-                <button 
-                  onClick={() => setLanguage('ber')}
-                  className={`px-2 py-1 rounded ${language === 'ber' ? 'bg-white/20' : ''}`}
-                >
-                  ⵜⴰⵎⴰⵣⵉⵖⵜ
-                </button>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => setLanguage('fr')}
+                    className={`px-2 py-1 rounded ${language === 'fr' ? 'bg-white/20' : ''}`}
+                  >
+                    FR
+                  </button>
+                  <button 
+                    onClick={() => setLanguage('ar')}
+                    className={`px-2 py-1 rounded ${language === 'ar' ? 'bg-white/20' : ''}`}
+                  >
+                    عربية
+                  </button>
+                  <button 
+                    onClick={() => setLanguage('ber')}
+                    className={`px-2 py-1 rounded ${language === 'ber' ? 'bg-white/20' : ''}`}
+                  >
+                    ⵜⴰⵎⴰⵣⵉⵖⵜ
+                  </button>
+                </div>
+                {user ? (
+                  <div className="relative group">
+                    <button className="flex items-center space-x-2 hover:bg-white/20 rounded-full p-2">
+                      <UserCircle className="w-6 h-6" />
+                      <span className="text-sm">{user.email}</span>
+                    </button>
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block">
+                      <div className="py-1">
+                        <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          Profile
+                        </a>
+                        <a href="/preferences" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          Préférences
+                        </a>
+                        <button
+                          onClick={() => signOut()}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Déconnexion
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-md transition-colors"
+                  >
+                    Connexion
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -116,16 +184,8 @@ function App() {
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
 
-function FeatureCard({ icon, title, description }) {
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-      <div className="mb-4">{icon}</div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }
